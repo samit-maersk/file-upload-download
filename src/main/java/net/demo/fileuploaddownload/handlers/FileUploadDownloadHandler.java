@@ -1,33 +1,28 @@
 package net.demo.fileuploaddownload.handlers;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.demo.fileuploaddownload.services.UploadService;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.http.codec.multipart.Part;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
-
-import java.nio.file.Path;
 
 import static org.springframework.web.reactive.function.server.ServerResponse.ok;
 
 @Configuration
 @Slf4j
+@RequiredArgsConstructor
 public class FileUploadDownloadHandler {
+    private final UploadService uploadService;
+
     public Mono<ServerResponse> upload(ServerRequest request) {
         return request.multipartData()
                 .flatMap(stringPartMultiValueMap -> {
                     var stringPartMap= stringPartMultiValueMap.toSingleValueMap();
                     var filePart = (FilePart) stringPartMap.get("file");
-                    return filePart
-                            .transferTo(Path.of("/tmp/"+filePart.filename()))
-                            .doOnError(e -> log.error("Error during file transfer to the path {}",e.getMessage()))
-                            .doOnSuccess(s -> log.info("File Uploaded Successfully"))
-                            .flatMap(res -> {
-                                log.info("File Upload Completed {}",res);
-                                return ok().body(Mono.just(filePart.filename() + "Uploaded"), String.class);
-                            });
+                    return uploadService.upload(filePart,"/tmp/");
                 }).then(ok().body(Mono.just("Uploaded"), String.class));
     }
 
